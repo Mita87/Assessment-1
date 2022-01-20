@@ -1,0 +1,240 @@
+---
+title: "Assesment - 2, s4669000"
+author: "Shuvomita Biswas (S4669000)"
+date: "20/01/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+library(skimr)
+library(knitr)
+library(tidymodels)
+library(modeldata)
+library(randomForest)
+library(datasets)
+```
+# Part 1. 
+
+click [here](https://github.com/)
+## Name *Shuvomita Biswas*
+## Student id **s4669000**
+# Assignment 2 
+---------------------------------------------------------------------------------------------------------------------------
+
+
+
+```{r}
+thanksgiving <- read_csv ("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-20/thanksgiving_meals.csv")
+glimpse ("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2018/2018-11-20/thanksgiving_meals.csv")
+
+```
+
+### Part 2: Data Wrangling and visualization
+
+# Q.1 Display the first 10 rows of the dataset using `kable()` function.
+
+```{r}
+kable (thanksgiving [1:10,])
+```
+
+#Q.2 Using `skim()` display the summary of variables. 
+
+```{r}
+skim(thanksgiving)
+```
+
+# Think about the task to predict a family income based on their menu: what variables may be useful? Are all of them correct type? 
+#Write 2-3 sentences with your explanation.
+
+##Answer- According to my understanding to predict the family income we can consider the below variables, the reason is the families who have higher income
+##are most likely to be able to afford more side dishes compared to others.
+##Yes, I believe all of them correct
+
+#Think about the task to predict a community type or US_region based on their menu: what variables may be useful? Are all of them correct type?
+
+## Answer- To predict US_region based on their menu, below variable would be useful.
+##Stuffing and Cranberry.Firstly, the regions which is rich rice production will use the rice stuffing for the main dish whereas the other regions would be
+##having bread based stuffing.Secondly, the regions with high cranberry production will make homemade cranberry but
+##the rest of the rtegions will use canned cranberry.
+
+# Q.3 Use `fct_reorder` and `parse_number` functions to create a factor variable `family_income
+
+```{r}
+thanksgiving <-thanksgiving %>%
+  mutate(family_income = fct_reorder(family_income,parse_number(family_income)))
+```
+
+# Q.4 What is the number of people who celebrate? 
+
+```{r}
+thanksgiving %>%
+  count(celebrate,sort = TRUE)
+```
+
+#Q.5 What are categories and insights for each main dish served and the method it is prepared? 
+# main dish served:
+
+```{r}
+thanksgiving %>%
+  count(main_dish,sort = TRUE)
+```
+## Almost everyone serves Turkey which is the highest number 859, no data available for 8.6%, 3.5% serves other,
+## 2.9% serves Ham/pork, 2.95% serves Tofurkey, 1.2% serves chicken, 1.1% roast beef, 0.5% no data available, 0.3% serves Turducken
+## As per the below table we can see that chicken can be prepared as baked, fried, roasted and other method.
+
+# method :
+```{r}
+thanksgiving %>%
+  count(main_dish, main_prep, sort = TRUE)
+```
+## As per the table below 422 familes eats baked Turkey, 351 eats Roasted Turkey, No data avaialable for 84 familes,
+## 41 families eats Fried Turkey and 34 familes eats other preparations of Turkeys.
+
+
+#Q.6. Create 3 different data viz showing insights for main dish served and the method. Provide your own legend and use themes.
+#Write 2-3 sentences with your explanation of each insight.
+
+# Data Vis 1
+
+```{r}
+ggplot(thanksgiving, aes(main_dish, main_prep)) + 
+  geom_count(colour = "blue")+
+  coord_flip()
+```
+##In the first visualisation I have used Count graph as it shows the number of every main dish along with the number of time it is prepared in a particular preparation type.
+##On the right handside we can clearly see the number of times along with circle signs.
+
+
+# Data Vis 2
+
+```{r}
+ggplot(thanksgiving, aes(main_dish, main_prep)) +
+  geom_point(shape = 21, colour = "blue", fill = "white", size = 5, stroke = 5)+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+## In the second visualisation I have chosen to use point graph as it is easy to see from this graph when any main dish such as Turkey is baked or roasted or so on. It gives an overview of the overall main dishes and preperation type.
+
+
+# Data Vis 3
+
+```{r}
+ggplot(thanksgiving, aes(main_dish, main_prep)) + 
+  geom_point()+
+  geom_smooth(se = FALSE)+
+  coord_flip()
+```
+##Lastly for the third one I have used point graph to show the specifically when a main dish is prepared in an a particular method. This helps to display every type of main dish and and preparation method. I have also used the smooth function for smoothing the data.
+
+
+# Q.7 How many use cranberry sauce? How many use gravy? 
+
+# Part 1
+```{r}
+thanksgiving%>%
+  count(cranberry, sort = TRUE)
+```
+
+#Part 2
+```{r}
+thanksgiving %>%
+  count(gravy, sort = TRUE)
+```
+
+# Q. 8-9. What is the distribution of those who celebrate across income ranges. Create a data viz.
+# Write 2-3 sentences with your explanation of each insight.
+
+```{r}
+thanksgiving %>%
+  filter(cranberry %in% c("Canned", "Homemade")) %>%
+  group_by(family_income) %>%
+  summarize(homemade = mean(cranberry == "Homemade"),
+            size = n()) %>%
+  ggplot(aes(family_income,homemade, group = 1))+
+  geom_line()+
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+## To display the distribution of those who celebrate across income ranges I have sleected cranberry as input variable. 
+## Assuming those who made homemade cranberry likely to have less income than people who used canned cranberry to serve the thanksgiving dinner.
+
+
+# Q. 10 Use the following code to create a new data set.
+
+```{r}
+food_data <- thanksgiving %>%
+  select(id, starts_with("side"),
+         starts_with("pie"),
+         starts_with("dessert")) %>%
+  select(-side15, -pie13, -dessert12) %>%
+  gather(type, value, -id) %>%
+  filter(!is.na(value),
+         !value %in% c("None", "Other (please specify)")) %>%
+  mutate(type = str_remove(type, "\\d+"))
+```
+
+# Write 2-3 sentences with your explanation of what it does. 
+
+## To start with, I have named the dataset as "TypeOfDesertPieSide".
+## Secondly, "Select" function is used for choosing column "id".
+## Thirdly, "starts_with" function is used for selecting the columns starts with the prefix "side","pie" and "dessert".
+##Then, "select" function is used for deselcting "-side15, -pie13, -dessert12".
+## Afterwards," gather" is used for fomulating new table with "type, value", exclude "id".
+## In the next line " filter" is used for excluding the rows containing nil values.
+##Lastly, mutate function is used for creating new columns and preserves existing ones.
+
+
+
+# Q.11-12 Intall package `widyr` and use `pairwise_cor()` function 
+
+```{r}
+#install.packages("widyr")
+library(widyr)
+```
+
+# Use this code for the new dataset
+```{r}
+food_data %>%
+  pairwise_cor(value, id, sort = TRUE)
+```
+# Write 1 sentence with your explanation of what insights it shows. 
+
+## By using pairwise_cor, feature selections can be done. It identifies groups of highly corelated featurtes and
+## keeps only one of them to enable the model enough predictive power using very less features.
+## We can consider this as an example of spread operate -retidy pattern
+
+# Q.13 Use `lm()` or randomForest() function to build a model that predict a family income based on data in the dataset.
+
+
+```{r}
+rf <- randomForest(family_income ~ celebrate , data = thanksgiving , na.action = na.omit)
+
+print(rf)
+
+```
+
+## On the first model I have used celebrate as input variable, assuming those who celebrate thanksgiving have higher income than those who dont.
+
+```{r}
+rf1 <- randomForest(family_income ~ main_dish , data = thanksgiving , na.action = na.omit)
+
+print(rf)
+```
+
+## On the Second model I have used main_dish as input variable, assuming those who serves ham/pork likely comes under the higher income range than those who serves chicken.
+
+```{r}
+rf2 <- randomForest(family_income ~ main_prep , data = thanksgiving , na.action = na.omit)
+
+print(rf)
+```
+## On the third model I have used main_dish as input variable, assuming those who serves roasted maindish earns more than those who serves baked dishes.
+
+## From all the above three model we can see the error rate is 82.05% for each of them which is same for all surprisingly. 
+## Hence neither of the three models is efficient enogh as the error rate is very high.
